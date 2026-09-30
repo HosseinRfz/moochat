@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
@@ -27,26 +28,21 @@ password_reset_token = PasswordResetTokenGenerator()
 
 
 class RegistrationView(generics.CreateAPIView):
-
     serializer_class = RegistrationSerializer
     permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
-
         user = serializer.save()
 
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = account_activation_token.make_token(user)
 
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-        activation_link = (
-            f"http://your-frontend.com/activate" f"?uid={uid}&token={token}"
-        )
+        activation_link = f"{settings.FRONTEND_URL}/activate/" f"{uidb64}/{token}/"
 
         send_mail(
             subject="Account Activation",
             message=(
-                f"Click this link to activate your account:\n" f"{activation_link}"
+                "Click this link to activate your account:\n" f"{activation_link}"
             ),
             from_email="noreply@mochat.com",
             recipient_list=[user.email],
