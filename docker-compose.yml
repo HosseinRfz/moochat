@@ -30,6 +30,8 @@ services:
       - media_data:/app/media
     ports:
       - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - SECRET_KEY=test
       - DEBUG=True
@@ -38,6 +40,13 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
       - DB_PORT=5432
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - HTTP_PROXY=http://host.docker.internal:12334
+      - HTTPS_PROXY=http://host.docker.internal:12334
+      - http_proxy=http://host.docker.internal:12334
+      - https_proxy=http://host.docker.internal:12334
+      - NO_PROXY=localhost,127.0.0.1,db,smtp4dev,host.docker.internal
+      - no_proxy=localhost,127.0.0.1,db,smtp4dev,host.docker.internal
     depends_on:
       db:
         condition: service_healthy

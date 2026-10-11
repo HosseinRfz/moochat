@@ -32,18 +32,22 @@ class RegistrationView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
-        user = serializer.save()
+        password = serializer.validated_data.pop("password")
+
+        user = User(**serializer.validated_data)
+        user.set_password(password)
+        user.is_active = False
+        user.save()
+
+        serializer.instance = user
 
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = account_activation_token.make_token(user)
-
-        activation_link = f"{settings.FRONTEND_URL}/activate/" f"{uidb64}/{token}/"
+        activation_link = f"{settings.FRONTEND_URL}/activate/{uidb64}/{token}/"
 
         send_mail(
             subject="Account Activation",
-            message=(
-                "Click this link to activate your account:\n" f"{activation_link}"
-            ),
+            message=f"Click this link to activate your account:\n{activation_link}",
             from_email="noreply@mochat.com",
             recipient_list=[user.email],
         )

@@ -1,0 +1,61 @@
+from django.urls import path
+
+from .views import (
+    OrganizationCreateView,
+    OrganizationListView,
+    OrganizationDetailView,
+    OrganizationUpdateView,
+    OrganizationDeleteView,
+    OrganizationMemberCreateView,
+    OrganizationMemberListView,
+    OrganizationMemberDeleteView,
+    OrganizationMemberUpdateView,
+)
+
+urlpatterns = [
+    path(
+        "",
+        OrganizationCreateView.as_view(),
+        name="organization-create",
+    ),
+    path(
+        "list/",
+        OrganizationListView.as_view(),
+        name="organization-list",
+    ),
+    path(
+        "<int:pk>/",
+        OrganizationDetailView.as_view(),
+        name="organization-detail",
+    ),
+    path(
+        "<int:pk>/update/",
+        OrganizationUpdateView.as_view(),
+        name="organization-update",
+    ),
+    path(
+        "<int:pk>/delete/",
+        OrganizationDeleteView.as_view(),
+        name="organization-delete",
+    ),
+    path(
+        "<int:organization_id>/members/",
+        OrganizationMemberCreateView.as_view(),
+        name="organization-member-create",
+    ),
+    path(
+        "<int:organization_id>/members/list/",
+        OrganizationMemberListView.as_view(),
+        name="organization-member-list",
+    ),
+    path(
+        "<int:organization_id>/members/<int:pk>/delete/",
+        OrganizationMemberDeleteView.as_view(),
+        name="organization-member-delete",
+    ),
+    path(
+        "<int:organization_id>/members/<int:pk>/update/",
+        OrganizationMemberUpdateView.as_view(),
+        name="organization-member-update",
+    ),
+]

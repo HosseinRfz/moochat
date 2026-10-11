@@ -4,3 +4,8 @@ psycopg2-binary
 djangorestframework
 djangorestframework-simplejwt
 pillow
+django-extensions
+pydot
+langchain==1.4.3
+langchain-google-genai
+google-genai

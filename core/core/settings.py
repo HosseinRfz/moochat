@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY")
+GOOGLE_API_KEY = config("GOOGLE_API_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", cast=bool)
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     # third-party
     "rest_framework",
     "rest_framework_simplejwt",
+    "django_extensions",
     # project apps
     "accounts",
     "organizations",
@@ -166,3 +168,8 @@ FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
     "http://127.0.0.1:3000",
 )
+
+# اعمال خودکار پروکسی برای تمام ریکوئست‌های خروجی پایتون
+if config("HTTPS_PROXY", default=None):
+    os.environ["HTTPS_PROXY"] = config("HTTPS_PROXY")
+    os.environ["HTTP_PROXY"] = config("HTTP_PROXY", default="")

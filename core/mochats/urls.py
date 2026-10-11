@@ -1,0 +1,61 @@
+from django.urls import path
+
+from .views import (
+    MooChatCreateView,
+    MooChatListView,
+    MooChatDetailView,
+    MooChatUpdateView,
+    MooChatDeleteView,
+    KnowledgeBaseListCreateView,
+    KnowledgeBaseDetailView,
+    KnowledgeItemListCreateView,
+    KnowledgeItemDetailView,
+)
+
+urlpatterns = [
+    path(
+        "",
+        MooChatCreateView.as_view(),
+        name="moochat-create",
+    ),
+    path(
+        "list/",
+        MooChatListView.as_view(),
+        name="moochat-list",
+    ),
+    path(
+        "<int:pk>/",
+        MooChatDetailView.as_view(),
+        name="moochat-detail",
+    ),
+    path(
+        "<int:pk>/update/",
+        MooChatUpdateView.as_view(),
+        name="moochat-update",
+    ),
+    path(
+        "<int:pk>/delete/",
+        MooChatDeleteView.as_view(),
+        name="moochat-delete",
+    ),
+    path(
+        "knowledge-bases/",
+        KnowledgeBaseListCreateView.as_view(),
+        name="knowledge-base-list-create",
+    ),
+    path(
+        "knowledge-bases/<int:pk>/",
+        KnowledgeBaseDetailView.as_view(),
+        name="knowledge-base-detail",
+    ),
+    path(
+        "knowledge-items/",
+        KnowledgeItemListCreateView.as_view(),
+        name="knowledge-item-list-create",
+    ),
+    path(
+        "knowledge-items/<int:pk>/",
+        KnowledgeItemDetailView.as_view(),
+        name="knowledge-item-detail",
+    ),
+]
