@@ -1,79 +1,101 @@
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.core.mail import send_mail
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
+import secrets
+import logging
 
-from rest_framework import generics, status
+from django.core.cache import cache
+from django.contrib.auth import get_user_model
+from django.db import transaction
+
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from organizations.models import Organization, OrganizationMember
 
 from .serializers import (
-    RegistrationSerializer,
-    ActivateAccountSerializer,
-    PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer,
+    PhoneNumberSerializer,
     LoginSerializer,
+    CompleteRegistrationSerializer,
 )
-
-from .tokens import account_activation_token
 
 User = get_user_model()
 
-password_reset_token = PasswordResetTokenGenerator()
+logger = logging.getLogger(__name__)
 
 
-class RegistrationView(generics.CreateAPIView):
-    serializer_class = RegistrationSerializer
+def get_phone_cache_key(phone_number):
+    return f"phone_verification:{phone_number}"
+
+
+def generate_verification_code():
+    return f"{secrets.randbelow(1000000):06d}"
+
+
+def send_verification_code(phone_number, code):
+    logger.warning(
+        "Verification code for %s: %s",
+        phone_number,
+        code,
+    )
+
+
+def verify_phone_code(phone_number, code):
+    cache_key = get_phone_cache_key(phone_number)
+    stored_code = cache.get(cache_key)
+
+    if stored_code is None:
+        return False
+
+    if not secrets.compare_digest(str(stored_code), str(code)):
+        return False
+
+    cache.delete(cache_key)
+
+    cache.set(
+        f"phone_verified:{phone_number}",
+        True,
+        timeout=3000,
+    )
+
+    return True
+
+
+def generate_tokens(user):
+    refresh = RefreshToken.for_user(user)
+
+    return {
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
+    }
+
+
+class RequestPhoneCodeView(APIView):
+
     permission_classes = [AllowAny]
 
-    def perform_create(self, serializer):
-        password = serializer.validated_data.pop("password")
-
-        user = User(**serializer.validated_data)
-        user.set_password(password)
-        user.is_active = False
-        user.save()
-
-        serializer.instance = user
-
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-        token = account_activation_token.make_token(user)
-        activation_link = f"{settings.FRONTEND_URL}/activate/{uidb64}/{token}/"
-
-        send_mail(
-            subject="Account Activation",
-            message=f"Click this link to activate your account:\n{activation_link}",
-            from_email="noreply@mochat.com",
-            recipient_list=[user.email],
-        )
-
-
-class ActivateAccountView(APIView):
-
-    permission_classes = [AllowAny]
-
-    def get(self, request, uidb64, token):
-
-        serializer = ActivateAccountSerializer(
-            data={
-                "uidb64": uidb64,
-                "token": token,
-            }
-        )
-
+    def post(self, request):
+        serializer = PhoneNumberSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.validated_data["user"]
+        phone_number = serializer.validated_data["phone_number"]
 
-        user.is_active = True
-        user.save()
+        code = generate_verification_code()
+        cache_key = get_phone_cache_key(phone_number)
 
-        return Response({"detail": "Account successfully activated."})
+        cache.set(cache_key, code, timeout=60)
+
+        send_verification_code(phone_number, code)
+
+        return Response(
+            {
+                "detail": (
+                    "Verification code generated. " "Check the development server logs."
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class LoginView(APIView):
@@ -84,17 +106,48 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.validated_data["user"]
+        phone_number = serializer.validated_data["phone_number"]
+        code = serializer.validated_data["verification_code"]
 
-        refresh = RefreshToken.for_user(user)
+        if not verify_phone_code(phone_number, code):
+            return Response(
+                {"detail": "The verification code is invalid or expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(phone_number=phone_number)
+
+        except User.DoesNotExist:
+            cache.set(
+                f"phone_verified:{phone_number}",
+                True,
+                timeout=3000,
+            )
+
+            return Response(
+                {
+                    "detail": "Phone verified. Complete registration.",
+                    "registration_required": True,
+                    "phone_number": phone_number,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        if not user.is_active:
+            return Response(
+                {"detail": "This account is inactive."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        tokens = generate_tokens(user)
 
         return Response(
             {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
+                **tokens,
                 "user": {
                     "id": user.id,
-                    "username": user.username,
+                    "phone_number": user.phone_number,
                     "email": user.email,
                     "first_name": user.first_name,
                     "last_name": user.last_name,
@@ -104,60 +157,75 @@ class LoginView(APIView):
         )
 
 
-class PasswordResetRequestView(APIView):
+class CompleteRegistrationView(APIView):
 
     permission_classes = [AllowAny]
 
     def post(self, request):
-
-        serializer = PasswordResetRequestSerializer(data=request.data)
-
+        serializer = CompleteRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"]
+        data = serializer.validated_data
+        phone_number = data["phone_number"]
 
-        try:
-            user = User.objects.get(email=email)
-
-        except User.DoesNotExist:
+        if User.objects.filter(phone_number=phone_number).exists():
             return Response(
-                {"detail": ("If the email exists, " "a recovery link will be sent")}
+                {"detail": "This phone number is already registered."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        token = password_reset_token.make_token(user)
+        # Registration requires a recently verified phone number.
+        if cache.get(f"phone_verified:{phone_number}") is not True:
+            return Response(
+                {"detail": "Please verify your phone number first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=phone_number,
+                phone_number=phone_number,
+                first_name=data["first_name"],
+                last_name=data["last_name"],
+                email=data["email"],
+                password=None,
+            )
 
-        reset_link = (
-            f"http://your-frontend.com/reset-password" f"?uid={uid}&token={token}"
-        )
+            user.is_active = True
+            user.set_unusable_password()
+            user.save()
 
-        send_mail(
-            subject="Password Recovery",
-            message=(f"Click this link to recover your password:\n" f"{reset_link}"),
-            from_email="noreply@mochat.com",
-            recipient_list=[email],
-        )
+            organization = Organization.objects.create(
+                name=data["organization_name"],
+                website=data.get("website", ""),
+                created_by=user,
+            )
+
+            OrganizationMember.objects.create(
+                organization=organization,
+                user=user,
+                role=OrganizationMember.Role.ADMIN,
+            )
+
+        cache.delete(f"phone_verified:{phone_number}")
+
+        tokens = generate_tokens(user)
 
         return Response(
-            {"detail": ("If the email exists, " "a recovery link will be sent")}
+            {
+                **tokens,
+                "user": {
+                    "id": user.id,
+                    "phone_number": user.phone_number,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                },
+                "organization": {
+                    "id": organization.id,
+                    "name": organization.name,
+                    "website": organization.website,
+                },
+            },
+            status=status.HTTP_201_CREATED,
         )
-
-
-class PasswordResetConfirmView(APIView):
-
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-
-        serializer.is_valid(raise_exception=True)
-
-        user = serializer.validated_data["user"]
-        new_password = serializer.validated_data["new_password"]
-
-        user.set_password(new_password)
-        user.save()
-
-        return Response({"detail": "Password changed successfully"})

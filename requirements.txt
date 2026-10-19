@@ -9,3 +9,6 @@ pydot
 langchain==1.4.3
 langchain-google-genai
 google-genai
+langchain-chroma
+langchain-cohere
+dotenv

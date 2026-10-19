@@ -1,18 +1,16 @@
 from django.urls import path
 
 from .views import (
-    RegistrationView,
+    RequestPhoneCodeView,
     LoginView,
-    ActivateAccountView,
-    PasswordResetRequestView,
-    PasswordResetConfirmView,
+    CompleteRegistrationView,
 )
 
 urlpatterns = [
     path(
-        "register/",
-        RegistrationView.as_view(),
-        name="register",
+        "phone/request-code/",
+        RequestPhoneCodeView.as_view(),
+        name="request-phone-code",
     ),
     path(
         "login/",
@@ -20,18 +18,8 @@ urlpatterns = [
         name="login",
     ),
     path(
-        "activate/<str:uidb64>/<str:token>/",
-        ActivateAccountView.as_view(),
-        name="activate",
-    ),
-    path(
-        "password-reset/request/",
-        PasswordResetRequestView.as_view(),
-        name="password-reset-request",
-    ),
-    path(
-        "password-reset/confirm/",
-        PasswordResetConfirmView.as_view(),
-        name="password-reset-confirm",
+        "register/complete/",
+        CompleteRegistrationView.as_view(),
+        name="complete-registration",
     ),
 ]

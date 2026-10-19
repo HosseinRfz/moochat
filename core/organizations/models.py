@@ -5,6 +5,9 @@ from django.db import models
 class Organization(models.Model):
     name = models.CharField(max_length=255)
 
+    website = models.URLField(
+        blank=True,
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

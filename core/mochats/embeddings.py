@@ -1,9 +1,10 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from django.conf import settings
+from langchain_cohere import CohereEmbeddings
 
 
 def get_embeddings():
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
+    embeddings = CohereEmbeddings(
+        model="embed-multilingual-v3.0",
+        cohere_api_key=settings.COHERE_API_KEY,
     )
-
     return embeddings

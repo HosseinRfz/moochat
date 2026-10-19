@@ -13,11 +13,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+from dotenv import load_dotenv
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -25,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY")
 GOOGLE_API_KEY = config("GOOGLE_API_KEY")
-
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", cast=bool)
 
@@ -169,7 +170,14 @@ FRONTEND_URL = os.getenv(
     "http://127.0.0.1:3000",
 )
 
-# اعمال خودکار پروکسی برای تمام ریکوئست‌های خروجی پایتون
-if config("HTTPS_PROXY", default=None):
-    os.environ["HTTPS_PROXY"] = config("HTTPS_PROXY")
-    os.environ["HTTP_PROXY"] = config("HTTP_PROXY", default="")
+
+# if config("HTTPS_PROXY", default=None):
+#     os.environ["HTTPS_PROXY"] = config("HTTPS_PROXY")
+#     os.environ["HTTP_PROXY"] = config("HTTP_PROXY", default="")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "moochat-verification-codes",
+    }
+}
