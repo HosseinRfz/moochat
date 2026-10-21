@@ -2,6 +2,8 @@ from django.shortcuts import get_object_or_404
 
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
+
 
 from .models import Conversation, Message
 from .permissions import IsConversationOwner, IsMessageConversationOwner
@@ -17,6 +19,17 @@ class ConversationListCreateView(generics.ListCreateAPIView):
         return Conversation.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        moochat = serializer.validated_data["moochat"]
+
+        is_member = moochat.organization.members.filter(
+            user=self.request.user,
+        ).exists()
+
+        if not is_member:
+            raise PermissionDenied(
+                "You are not a member of this MooChat's organization."
+            )
+
         serializer.save(user=self.request.user)
 
 

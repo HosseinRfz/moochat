@@ -41,7 +41,10 @@ def generate_conversation_response(
         )
     )
 
-    assistant_response = generate_llm_response(messages)
+    assistant_response = generate_llm_response(
+        messages=messages,
+        moochat_id=conversation.moochat_id,
+    )
 
     Message.objects.create(
         conversation=conversation,

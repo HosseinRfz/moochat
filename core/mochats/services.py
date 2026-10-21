@@ -22,7 +22,7 @@ def generate_response(message):
     return response.content
 
 
-def generate_conversation_response(messages):
+def generate_conversation_response(messages, moochat_id):
     llm = get_llm()
 
     from .rag import retrieve_relevant_documents
@@ -30,7 +30,8 @@ def generate_conversation_response(messages):
     last_user_message = messages[-1].content
 
     relevant_documents = retrieve_relevant_documents(
-        last_user_message,
+        query=last_user_message,
+        moochat_id=moochat_id,
     )
 
     context = "\n\n".join(document.page_content for document in relevant_documents)

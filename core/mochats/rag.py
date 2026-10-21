@@ -38,12 +38,15 @@ def add_knowledge_item(item):
     )
 
 
-def retrieve_relevant_documents(query, k=4):
+def retrieve_relevant_documents(query, moochat_id, k=4):
     vector_store = get_vector_store()
 
     documents = vector_store.similarity_search(
         query,
         k=k,
+        filter={
+            "moochat_id": moochat_id,
+        },
     )
 
     return documents
