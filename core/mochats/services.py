@@ -44,11 +44,14 @@ def generate_conversation_response(messages):
 
     response = llm.invoke(prompt_messages)
 
+    if isinstance(response.content, str):
+        return response.content
+
     if isinstance(response.content, list):
         return "".join(
-            block["text"]
+            block.get("text", "")
             for block in response.content
             if isinstance(block, dict) and block.get("type") == "text"
         )
 
-    return response.content
+    return str(response.content)
