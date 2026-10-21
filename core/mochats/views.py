@@ -7,7 +7,6 @@ from .models import KnowledgeBase, KnowledgeItem
 from .serializers import MooChatSerializer
 from .serializers import KnowledgeBaseSerializer, KnowledgeItemSerializer
 from .permissions import IsOrganizationAdmin, IsKnowledgeItemOrganizationAdmin
-from .rag import delete_knowledge_item
 
 from organizations.models import OrganizationMember
 
@@ -143,8 +142,3 @@ class KnowledgeItemDetailView(generics.RetrieveUpdateDestroyAPIView):
         return KnowledgeItem.objects.filter(
             knowledge_base__moochat__organization__members__user=self.request.user
         )
-
-    def perform_destroy(self, instance):
-        delete_knowledge_item(instance)
-
-        instance.delete()

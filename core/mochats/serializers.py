@@ -3,11 +3,6 @@ from rest_framework import serializers
 from .models import MooChat
 from .models import KnowledgeBase
 from .models import KnowledgeItem
-from .rag import (
-    add_knowledge_item,
-    update_knowledge_item,
-    delete_knowledge_item,
-)
 
 
 class MooChatSerializer(serializers.ModelSerializer):
@@ -124,27 +119,3 @@ class KnowledgeItemSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
-
-    def create(self, validated_data):
-        knowledge_item = KnowledgeItem.objects.create(
-            **validated_data,
-        )
-
-        add_knowledge_item(knowledge_item)
-
-        return knowledge_item
-
-    def update(self, instance, validated_data):
-        knowledge_item = super().update(
-            instance,
-            validated_data,
-        )
-
-        update_knowledge_item(knowledge_item)
-
-        return knowledge_item
-
-    def delete(self, instance):
-        delete_knowledge_item(instance)
-
-        instance.delete()
